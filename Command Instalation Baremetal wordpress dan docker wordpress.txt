@@ -1,0 +1,122 @@
+||BAREMETAL WORDPRESS ON||
+
+#Menyiapkan httpd
+sudo yum install httpd -y
+sudo systemctl start httpd.service
+sudo systemctl status httpd.service
+sudo systemctl enable httpd.service
+sudo usermod -a -G apache ec2-user
+sudo chown -R ec2-user:apache /var/www/html/*
+<IP Public>:80 (untuk mengecek aktif atau tidak)
+(Pastikan pot 80 pada security inbound grup aktif dengan protokol http)
+
+#Menginstall database maridb
+sudo yum install mariadb-server mariadb -y
+sudo systemctl start mariadb.service
+sudo systemctl status mariadb.service
+mysql_secure_installation
+systemctl enable mariadb.service
+mysql -u root -p
+CREATE DATABASE wordpress ;
+CREATE USER rayhan@localhost IDENTIFIED BY 'rayhan'; (pass default sama dengan username)
+GRANT ALL PRIVILEGES ON wordpress .* TO rayhan@localhost IDENTIFIED BY 'rayhan';
+FLUSH PRIVILEGES;
+exit
+
+#Menginstall PHP7.4 pada amazon linux 2 instance
+which amazon-linux-extras (mengecek apakah dependensi sudah tersedia)
+sudo yum install -y amazon-linux-extras (jika belum maka lakukan ini)
+sudo  amazon-linux-extras | grep php (melihat versi PHP yang tersedia)
+sudo amazon-linux-extras enable php7.4(mengaktifkan php)
+sudo yum install php php-pear php-cgi php-common php-curl php-mbstring php-gd php-mysqlnd php-gettext php-bcmath php-json php-xml php-fpm php-intl php-zip php-imap (package php)
+php --version
+sudo systemctl restart httpd.service (memuat php)
+
+#Menginstall dan mengkonfigurasikan wordpress
+mkdir baremetal
+cd baremetal
+wget http://wordpress.org/latest.tar.gz (package wordprase)
+tar xzvf latest.tar.gz (extarct)
+sudo chown -R ec2-user:apache /var/www/html
+mv wordpress/ /var/www/html (memindahkan directiori)
+mkdir /var/www/html/wordpress/wp-content/uploads
+
+cd /var/www/html/wordpress
+cp wp-config-sample.php wp-config.php
+nano wp-config.php 
+(konfigurasikan username,password dan nama database sesuai dengan yang sudah kita konfigurasikan pada bagian database tadi, sisanya biarkan saja.)
+<ip public>/wordpress/wp-admin/install.php (lakukan instalasi seperti seharusnya)
+
+||INSTALL PHPMYADMIN||
+cd /var/www/html
+wget https://files.phpmyadmin.net/phpMyAdmin/5.1.1/phpMyAdmin-5.1.1-all-languages.tar.gz
+mv 
+rm -rf
+
+||INSTALL DOCKER WORDPRESS||
+
+#install docker
+sudo amazon-linux-extras install docker
+sudo systemctl enable docker.service
+sudo systemctl start docker.service
+sudo systemctl status docker.service
+docker version
+
+#install docker compose dan wordpress
+mkdir wordpress_docker
+cd  wordpress_docker
+install
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+biar di eksekusi
+sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+docker-compose --version
+nano docker-compose.yaml
+
+--isi file yaml--
+version: "3.9"
+    
+services:
+  db:
+    image: mariadb:latest
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rayhan
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: rayhan
+      MYSQL_PASSWORD: rayhan
+    
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    volumes:
+      - wordpress_data:/var/www/html
+    ports:
+      - "8000:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: rayhan
+      WORDPRESS_DB_PASSWORD: rayhan
+      WORDPRESS_DB_NAME: wordpress
+volumes:
+  db_data: {}
+  wordpress_data: {}
+
+docker-compose up -d
+<ip publik>:8000 (pastikan port 8000 telah aktif)
+
+Referensi :
+https://idcloudhost.com/panduan/cara-install-wordpress-di-centos-7/
+https://idcloudhost.com/panduan/tutorial-cara-install-lamp-di-cent-os/
+https://techviewleo.com/install-php-7-on-amazon-linux/
+https://www.cyberciti.biz/faq/how-to-install-docker-on-amazon-linux-2/
+https://docs.docker.com/compose/install/
+
+
+
+
+
